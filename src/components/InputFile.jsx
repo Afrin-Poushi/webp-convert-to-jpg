@@ -95,7 +95,7 @@ const InputFile = () => {
   const uploadImgToApi = async (blob) => {
     const config = {
       headers: {
-        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhaWQiOiIxNzc1NWZjYi04OGQ1LTQwZTQtOGIxYi1mN2UyMzk4YjNhOGEiLCJleHAiOjE2ODg3Mjg3OTIsInJpZCI6IjhmNTM5OWQzLTg5OTktNGI3OS04NWQxLTZkODc1NzAwOTkxNCIsInVpZCI6MjE2fQ.Ly2FwbQQKPBl8LFlSEGF2AtBTDO7UyQTlpYCdhWwVVE`,
+        Authorization: `Bearer ${TOKEN}`,
         "Content-Type": "multipart/form-data",
       },
     };
@@ -114,7 +114,7 @@ const InputFile = () => {
     try {
       const response = await axios(payload);
 
-      console.log("The response: ", response);
+      console.log("The response data: ", response.data);
     } catch (error) {
       console.error(error);
       console.warn(error.response);
