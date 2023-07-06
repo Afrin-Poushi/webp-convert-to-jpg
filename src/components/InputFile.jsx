@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ALLOWED_FILE_TYPE, WEBP_FILE, fileTypes } from "./constants";
+import { ALLOWED_FILE_TYPE, TOKEN, WEBP_FILE, fileTypes } from "./constants";
+import axios from "axios";
 
 const InputFile = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [resolution, setResolution] = useState({});
 
   const canvasRef = useRef(null);
+
+  const handleFileChange = (event) => {
+    /** element HTMLInputElement.files property, is a FileList object
+     * a list of File objects which is an array */
+    const files = Array.from(event.target.files);
+    console.log(files);
+
+    setSelectedFiles(files);
+  };
 
   useEffect(() => {
     addResolutionToPrototype();
@@ -30,8 +40,8 @@ const InputFile = () => {
 
   /** Get the Canvas ref */
 
-  useEffect(() => {
-    selectedFiles.map((file) => {
+  const convertToJpeg = () => {
+    selectedFiles.forEach((file) => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
@@ -44,45 +54,76 @@ const InputFile = () => {
           canvas.height = image.height;
 
           context.drawImage(image, 0, 0, canvas.width, canvas.height);
-          const jpgDataURL = canvas.toDataURL("image/jpeg");
-          // console.log(jpgDataURL);
-          /**download attribute means target will be downloaded
-           * when a user clicks on the hyperlink*/
-          const downloadLink = document.createElement("a");
-          downloadLink.href = jpgDataURL;
-          downloadLink.download = file.name + " .jpg";
 
-          //trigger the download
-          downloadLink.click();
+          // const jpegDataURL = canvas.toDataURL("image/jpeg");
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              console.log(blob);
+              // Create a temporary URL for the Blob
+              const blobURL = URL.createObjectURL(blob);
+
+              // Create a temporary link element
+              /**download attribute means target will be downloaded
+               * when a user clicks on the hyperlink*/
+              const downloadLink = document.createElement("a");
+              downloadLink.href = blobURL;
+              downloadLink.download = removeExtension(file) + ".jpeg";
+
+              // Simulate a click event to trigger the download
+              downloadLink.click();
+
+              /**Uploading the Blob file to backend API */
+              uploadImgToApi(blob);
+
+              // Clean up the temporary URL
+              URL.revokeObjectURL(blobURL);
+            }
+          }, "image/jpeg");
         };
         image.src = e.target.result;
       };
 
       reader.readAsDataURL(file);
     });
-
-    //Our first draw
-    // context.fillStyle = "#000000";
-    // context.fillRect(0, 0, context.canvas.width, context.canvas.height);
-  }, [resolution]);
-
-  const handleFileChange = (event) => {
-    /** element HTMLInputElement.files property, is a FileList object
-     * a list of File objects which is an array */
-    const files = Array.from(event.target.files);
-    console.log(files);
-    setSelectedFiles(files);
   };
 
-  // const handleFileLoad = async (file) => {
-  //   const dimensions = await file.getResolution(file);
-  //   setResolution((prevDimensions) => ({
-  //     ...prevDimensions,
-  //     [file.name]: dimensions,
-  //   }));
+  useEffect(() => {
+    convertToJpeg();
+  }, [selectedFiles]);
 
-  //   console.log(file.type);
-  // };
+  const uploadImgToApi = async (blob) => {
+    const config = {
+      headers: {
+        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhaWQiOiIxNzc1NWZjYi04OGQ1LTQwZTQtOGIxYi1mN2UyMzk4YjNhOGEiLCJleHAiOjE2ODg3Mjg3OTIsInJpZCI6IjhmNTM5OWQzLTg5OTktNGI3OS04NWQxLTZkODc1NzAwOTkxNCIsInVpZCI6MjE2fQ.Ly2FwbQQKPBl8LFlSEGF2AtBTDO7UyQTlpYCdhWwVVE`,
+        "Content-Type": "multipart/form-data",
+      },
+    };
+
+    const formData = new FormData();
+    formData.append("file", blob);
+    formData.append("type", "img");
+
+    const payload = {
+      url: "https://api-qa.shadowchef.co/v1/upload",
+      method: "post",
+      data: formData,
+      headers: config.headers,
+    };
+
+    try {
+      const response = await axios(payload);
+
+      console.log("The response: ", response);
+    } catch (error) {
+      console.error(error);
+      console.warn(error.response);
+    }
+  };
+
+  const isBlobImage = (image) => {
+    return image instanceof Blob;
+  };
 
   const validFileType = (file) => {
     return fileTypes.includes(file.type);
@@ -92,8 +133,7 @@ const InputFile = () => {
     return WEBP_FILE.includes(file.type);
   };
 
-  const returnFileSize = (number) => {
-    const bytes = number;
+  const returnFileSize = (bytes) => {
     const kilobytes = bytes / 1024;
     const megabytes = kilobytes / 1024;
     const gigabytes = megabytes / 1024;
@@ -131,21 +171,25 @@ const InputFile = () => {
     };
   };
 
+  const removeExtension = (file) => {
+    return file.name.replace(/\.[^/.]+$/, "");
+  };
+
   const renderPreview = () => {
     if (selectedFiles.length === 0) {
-      return <p>No files currently selected for upload</p>;
+      return <p></p>;
     } else {
       return (
         <ul className="flex items-center justify-evenly flex-wrap">
           {selectedFiles.map((file) => (
-            <li key={file.name} className="">
-              {validFileType(file) ? (
+            <li key={file.name} className="w-auto p-3">
+              {webpFileType(file) ? (
                 <>
                   <img
                     src={URL.createObjectURL(file)}
                     alt={file.name}
                     // onLoad={() => handleFileLoad(file)}
-                    className="h-32 w-auto"
+                    className="h-32 w-auto m-auto"
                   />
 
                   <p> {file.name}</p>
@@ -170,9 +214,12 @@ const InputFile = () => {
 
   return (
     <div className="text-center">
-      <div className="m-4">
-        <label htmlFor="image_uploads">
-          Choose images to upload (.jpg, .jpeg, .png, .bmp, .webp)
+      <div className="border-2 border-gray-500 border-dashed px-6 pt-2 pb-3 mx-72 my-3">
+        <label
+          className="block text-sm font-medium text-gray-800"
+          htmlFor="image_uploads"
+        >
+          Upload Image
         </label>
         <input
           type="file"
@@ -181,11 +228,18 @@ const InputFile = () => {
           accept={ALLOWED_FILE_TYPE}
           onChange={handleFileChange}
           multiple
+          className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg
+                 cursor-pointer bg-gray-50 dark:text-gray-200 focus:outline-none dark:bg-gray-500
+                  dark:border-gray-600 dark:placeholder-gray-400"
         />
+        <p className="text-xs text-gray-900 mt-1" id="image_uploads_hint">
+          {ALLOWED_FILE_TYPE}
+        </p>
       </div>
+
       <div className="preview">{renderPreview()}</div>
       <div>
-        <canvas ref={canvasRef}></canvas>
+        <canvas ref={canvasRef} className="mx-auto h-1/2 w-1/2"></canvas>
       </div>
     </div>
   );
