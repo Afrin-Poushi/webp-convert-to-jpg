@@ -75,31 +75,32 @@ const InputFile = () => {
           // check if the file size is greater than 1MB
           console.log("size: ", returnFileSize(blob.size));
 
-          console.log(isFileSizeGreater(blob.size));
           if (isFileSizeGreater(blob.size)) {
             quality = quality - 0.1;
             convertToBlobURL(canvas, file, quality);
           }
           console.timeEnd("time taken");
 
-          // Create a temporary URL for the Blob
-          const blobURL = URL.createObjectURL(blob);
+          if (!isFileSizeGreater(blob.size)) {
+            // Create a temporary URL for the Blob
+            const blobURL = URL.createObjectURL(blob);
 
-          // Create a temporary link element
-          /**download attribute means target will be downloaded
-           * when a user clicks on the hyperlink*/
-          const downloadLink = document.createElement("a");
-          downloadLink.href = blobURL;
-          downloadLink.download = removeExtension(file) + ".jpeg";
+            // Create a temporary link element
+            /**download attribute means target will be downloaded
+             * when a user clicks on the hyperlink*/
+            const downloadLink = document.createElement("a");
+            downloadLink.href = blobURL;
+            downloadLink.download = removeExtension(file) + ".jpeg";
 
-          // Simulate a click event to trigger the download
-          downloadLink.click();
+            // Simulate a click event to trigger the download
+            downloadLink.click();
 
-          /**Uploading the Blob file to backend API */
-          uploadImgToApi(blob);
+            /**Uploading the Blob file to backend API */
+            uploadImgToApi(blob);
 
-          // Clean up the temporary URL
-          URL.revokeObjectURL(blobURL);
+            // Clean up the temporary URL
+            URL.revokeObjectURL(blobURL);
+          }
         }
       },
       "image/jpeg",
